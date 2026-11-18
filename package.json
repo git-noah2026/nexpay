@@ -1,0 +1,18 @@
+{
+  "name": "nexpay",
+  "version": "1.0.0",
+  "description": "NEXpay – Kassasystem by Andrerer (Supabase + Cloudflare)",
+  "author": "Andrerer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8788",
+    "deploy": "wrangler deploy",
+    "check": "node --check public/app.js && node --check public/sw.js && node --check public/config.js",
+    "vendor": "node -e \"require('fs').copyFileSync('node_modules/@supabase/supabase-js/dist/umd/supabase.js','public/vendor/supabase.js')\""
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "wrangler": "^4.164.0"
+  }
+}

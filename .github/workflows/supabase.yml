@@ -1,0 +1,76 @@
+# NEXpay – Datenbank-Migrationen aus supabase/migrations automatisch in Supabase einspielen
+#
+# NEXpay teilt sich das Supabase-Projekt mit NEXCOUNT. Damit sich die Migrationslisten der beiden
+# Repos nicht in die Quere kommen, nutzt NEXpay NICHT „supabase db push“, sondern spielt jede Datei
+# über die Supabase Management API ein und merkt sich den Stand in public.pay_schema_migrations.
+#
+# Einmalig nötig (GitHub → Settings → Secrets and variables → Actions → New repository secret):
+#   SUPABASE_ACCESS_TOKEN  – Supabase → Account → Access Tokens → „Generate new token“
+#                            (derselbe Token wie bei NEXCOUNT funktioniert)
+# Ohne dieses Secret wird der Schritt mit einem Hinweis übersprungen (kein Fehler).
+name: Supabase-Datenbank
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-db
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Migrationen einspielen
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: xrzovtfaqthaxucaoale
+    steps:
+      - name: Zugangsdaten prüfen
+        id: check
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::warning title=Supabase nicht verbunden::Das Secret SUPABASE_ACCESS_TOKEN fehlt (Settings → Secrets and variables → Actions). Migrationen wurden übersprungen."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+
+      - name: Neue Migrationen einspielen
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          API="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}/database/query"
+          q() {
+            jq -n --arg q "$1" '{query: $q}' | curl -sS --fail-with-body -X POST "$API" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" -H "Content-Type: application/json" --data-binary @-
+          }
+          q "create table if not exists public.pay_schema_migrations (version text primary key, applied_at timestamptz not null default now());
+             alter table public.pay_schema_migrations enable row level security;
+             revoke all on public.pay_schema_migrations from anon, authenticated;" > /dev/null
+          applied="$(q "select coalesce(json_agg(version order by version), '[]'::json) as v from public.pay_schema_migrations" | jq -r '.[0].v[]?')"
+          shopt -s nullglob
+          count=0
+          for f in supabase/migrations/*.sql; do
+            v="$(basename "$f" .sql)"
+            if grep -qxF "$v" <<< "$applied"; then echo "✓ $v (bereits eingespielt)"; continue; fi
+            echo "→ $v wird eingespielt …"
+            sql="begin;
+          $(cat "$f")
+          insert into public.pay_schema_migrations (version) values ('$v');
+          commit;"
+            if ! out="$(q "$sql")"; then
+              echo "::error title=Migration fehlgeschlagen::$v – $out"
+              exit 1
+            fi
+            echo "✓ $v eingespielt"
+            count=$((count + 1))
+          done
+          echo "Fertig: $count neue Migration(en)."

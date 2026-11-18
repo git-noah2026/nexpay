@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de-AT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' https://static.cloudflareinsights.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="same-origin">
+  <title>NEXpay by Andrerer</title>
+  <meta name="description" content="NEXpay by Andrerer – Das Kassasystem für die Kleinen">
+  <meta name="theme-color" content="#022c22">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app"><div class="boot"><img src="icon.svg" alt="" width="56" height="56"><span>NEXpay wird geladen …</span></div></div>
+  <div id="modal-root"></div>
+  <div id="toast-root" aria-live="polite"></div>
+  <div id="print-root"></div>
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

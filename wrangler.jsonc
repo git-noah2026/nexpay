@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Cloudflare liefert nur die Oberfläche aus (statische Dateien in public/).
+  // Anmeldung, Datenbank und Live-Updates laufen über Supabase.
+  "name": "nexpay",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public"
+  }
+}
