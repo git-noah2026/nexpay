@@ -56,6 +56,11 @@ jobs:
           code="$(curl -sS -o /tmp/probe.json -w '%{http_code}' "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}" \
             -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}")"
           if [ "$code" != "200" ]; then
+            # Nur unkritische Merkmale ausgeben (Länge, Präfix ja/nein) – niemals den Token selbst
+            tok_len=${#SUPABASE_ACCESS_TOKEN}
+            case "$SUPABASE_ACCESS_TOKEN" in sbp_*) tok_prefix="ja" ;; *) tok_prefix="nein" ;; esac
+            tok_ws="nein"; [[ "$SUPABASE_ACCESS_TOKEN" =~ [[:space:][:cntrl:]] ]] && tok_ws="ja"
+            echo "Token-Länge: $tok_len Zeichen · beginnt mit sbp_: $tok_prefix · enthält Leer-/Steuerzeichen: $tok_ws"
             echo "::error title=Supabase-Zugang abgelehnt (HTTP $code)::SUPABASE_ACCESS_TOKEN ist ungültig oder hat keinen Zugriff auf das Projekt ${SUPABASE_PROJECT_ID}. Erwartet wird ein Personal Access Token (beginnt mit sbp_) aus Supabase → Account → Access Tokens – nicht der Publishable/Secret Key und nicht das Datenbank-Passwort. Antwort: $(head -c 300 /tmp/probe.json)"
             exit 1
           fi
