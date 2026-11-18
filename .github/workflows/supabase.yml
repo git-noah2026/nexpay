@@ -52,6 +52,13 @@ jobs:
             jq -n --arg q "$1" '{query: $q}' | curl -sS --fail-with-body -X POST "$API" \
               -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" -H "Content-Type: application/json" --data-binary @-
           }
+          # Zugang vorab prüfen – liefert eine verständliche Meldung statt „curl: (22)“
+          code="$(curl -sS -o /tmp/probe.json -w '%{http_code}' "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_ID}" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}")"
+          if [ "$code" != "200" ]; then
+            echo "::error title=Supabase-Zugang abgelehnt (HTTP $code)::SUPABASE_ACCESS_TOKEN ist ungültig oder hat keinen Zugriff auf das Projekt ${SUPABASE_PROJECT_ID}. Erwartet wird ein Personal Access Token (beginnt mit sbp_) aus Supabase → Account → Access Tokens – nicht der Publishable/Secret Key und nicht das Datenbank-Passwort. Antwort: $(head -c 300 /tmp/probe.json)"
+            exit 1
+          fi
           q "create table if not exists public.pay_schema_migrations (version text primary key, applied_at timestamptz not null default now());
              alter table public.pay_schema_migrations enable row level security;
              revoke all on public.pay_schema_migrations from anon, authenticated;" > /dev/null
